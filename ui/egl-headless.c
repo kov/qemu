@@ -60,19 +60,26 @@ static void egl_scanout_disable(void *dg)
 
 static void egl_scanout_texture(void *dg,
                                 uint32_t backing_id,
-                                bool backing_y_0_top,
-                                uint32_t backing_width,
-                                uint32_t backing_height,
+                                DisplayGLTextureBorrower backing_borrower,
                                 uint32_t x, uint32_t y,
                                 uint32_t w, uint32_t h)
 {
     egl_dpy *edpy = dg;
+    bool backing_y_0_top;
+    uint32_t backing_width;
+    uint32_t backing_height;
 
-    edpy->y_0_top = backing_y_0_top;
+    GLuint backing_texture = backing_borrower(backing_id, &backing_y_0_top,
+                                              &backing_width, &backing_height);
+    if (!texture) {
+        return;
+    }
+
+    edpy->y_0_top = y_0_top;
 
     /* source framebuffer */
     egl_fb_setup_for_tex(&edpy->guest_fb,
-                         backing_width, backing_height, backing_id, false);
+                         backing_width, backing_height, backing_texture, false);
 
     /* dest framebuffer */
     if (edpy->blit_fb.width  != backing_width ||
