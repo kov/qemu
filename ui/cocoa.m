@@ -91,7 +91,7 @@ static NSArray * supportedImageFileTypes;
 
 static QemuSemaphore display_init_sem;
 static QemuSemaphore app_started_sem;
-static bool allow_events;
+static bool inited;
 
 #ifdef CONFIG_OPENGL
 
@@ -533,9 +533,9 @@ QemuCocoaView *cocoaView;
 - (void) updateUIInfo
 {
     NSSize frameSize;
-    QemuUIInfo info;
+    QemuUIInfo info = {};
 
-    if (!qemu_console_is_graphic(dcl.con)) {
+    if (!qatomic_load_acquire(&inited)) {
         return;
     }
 
@@ -544,6 +544,7 @@ QemuCocoaView *cocoaView;
         CGDirectDisplayID display = [[description objectForKey:@"NSScreenNumber"] unsignedIntValue];
         NSSize screenSize = [[[self window] screen] frame].size;
         CGSize screenPhysicalSize = CGDisplayScreenSize(display);
+        CVDisplayLinkRef displayLink;
 
         if (([[self window] styleMask] & NSWindowStyleMaskFullScreen) == 0) {
             frameSize = [self frame].size;
@@ -551,18 +552,23 @@ QemuCocoaView *cocoaView;
             frameSize = screenSize;
         }
 
+        if (!CVDisplayLinkCreateWithCGDisplay(display, &displayLink)) {
+            CVTime period = CVDisplayLinkGetNominalOutputVideoRefreshPeriod(displayLink);
+            CVDisplayLinkRelease(displayLink);
+            if (!(period.flags & kCVTimeIsIndefinite)) {
+                update_displaychangelistener(&dcl, 1000 * period.timeValue / period.timeScale);
+                info.refresh_rate = (int64_t)1000 * period.timeScale / period.timeValue;
+            }
+        }
+
         info.width_mm = frameSize.width / screenSize.width * screenPhysicalSize.width;
         info.height_mm = frameSize.height / screenSize.height * screenPhysicalSize.height;
     } else {
         frameSize = [self frame].size;
-        info.width_mm = 0;
-        info.height_mm = 0;
     }
 
     NSSize frameBackingSize = [self convertSizeToBacking:frameSize];
 
-    info.xoff = 0;
-    info.yoff = 0;
     info.width = frameBackingSize.width;
     info.height = frameBackingSize.height;
 
@@ -651,7 +657,7 @@ QemuCocoaView *cocoaView;
 
 - (bool) handleEvent:(NSEvent *)event
 {
-    if(!qatomic_read(&allow_events)) {
+    if(!qatomic_read(&inited)) {
         /*
          * Just let OSX have all events that arrive before
          * applicationDidFinishLaunching.
@@ -2224,7 +2230,7 @@ static void cocoa_display_init(DisplayState *ds, DisplayOptions *opts)
     }
 
     register_displaychangelistener(&dcl);
-    qatomic_set(&allow_events, true);
+    qatomic_store_release(&inited, true);
 }
 
 static QemuDisplay qemu_display_cocoa = {
