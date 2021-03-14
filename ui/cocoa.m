@@ -71,6 +71,59 @@
 #define COCOA_DEBUG(...)  ((void) 0)
 #endif
 
+typedef void (^CodeBlock)(void);
+typedef bool (^BoolCodeBlock)(void);
+
+@interface QemuCocoaView : NSView
+{
+    NSTrackingArea *trackingArea;
+    QEMUScreen screen;
+    QKbdState *kbd;
+    BOOL isMouseGrabbed;
+    BOOL isAbsoluteEnabled;
+}
+- (void) grabMouse;
+- (void) ungrabMouse;
+- (void) handleMonitorInput:(NSEvent *)event;
+- (bool) handleEvent:(NSEvent *)event;
+- (bool) handleEventLocked:(NSEvent *)event;
+- (void) setAbsoluteEnabled:(BOOL)tIsAbsoluteEnabled;
+/* The state surrounding mouse grabbing is potentially confusing.
+ * isAbsoluteEnabled tracks qemu_input_is_absolute() [ie "is the emulated
+ *   pointing device an absolute-position one?"], but is only updated on
+ *   next refresh.
+ * isMouseGrabbed tracks whether GUI events are directed to the guest;
+ *   it controls whether special keys like Cmd get sent to the guest,
+ *   and whether we capture the mouse when in non-absolute mode.
+ */
+- (BOOL) isMouseGrabbed;
+- (BOOL) isAbsoluteEnabled;
+- (void) raiseAllKeys;
+@end
+
+@interface QemuCocoaAppController : NSObject
+                                       <NSWindowDelegate, NSApplicationDelegate>
+{
+}
+- (void)doToggleFullScreen:(id)sender;
+- (void)showQEMUDoc:(id)sender;
+- (void)zoomToFit:(id) sender;
+- (void)displayConsole:(id)sender;
+- (void)pauseQEMU:(id)sender;
+- (void)resumeQEMU:(id)sender;
+- (void)displayPause;
+- (void)removePause;
+- (void)restartQEMU:(id)sender;
+- (void)powerDownQEMU:(id)sender;
+- (void)ejectDeviceMedia:(id)sender;
+- (void)changeDeviceMedia:(id)sender;
+- (BOOL)verifyQuit;
+- (void)openDocumentation:(NSString *)filename;
+- (IBAction) do_about_menu_item: (id) sender;
+- (void)make_about_window;
+- (void)adjustSpeed:(id)sender;
+@end
+
 #define cgrect(nsrect) (*(CGRect *)&(nsrect))
 
 typedef struct {
@@ -121,9 +174,6 @@ static void cocoa_gl_destroy_context(void *dg, QEMUGLContext ctx);
 #endif
 
 // Utility functions to run specified code block with iothread lock held
-typedef void (^CodeBlock)(void);
-typedef bool (^BoolCodeBlock)(void);
-
 static void with_iothread_lock(CodeBlock block)
 {
     bool locked = qemu_mutex_iothread_locked();
@@ -317,37 +367,6 @@ static CGRect compute_cursor_clip_rect(int screen_height,
 
     return rect;
 }
-
-/*
- ------------------------------------------------------
-    QemuCocoaView
- ------------------------------------------------------
-*/
-@interface QemuCocoaView : NSView
-{
-    NSTrackingArea *trackingArea;
-    QEMUScreen screen;
-    QKbdState *kbd;
-    BOOL isMouseGrabbed;
-    BOOL isAbsoluteEnabled;
-}
-- (void) grabMouse;
-- (void) ungrabMouse;
-- (void) handleMonitorInput:(NSEvent *)event;
-- (bool) handleEvent:(NSEvent *)event;
-- (bool) handleEventLocked:(NSEvent *)event;
-- (void) setAbsoluteEnabled:(BOOL)tIsAbsoluteEnabled;
-/* The state surrounding mouse grabbing is potentially confusing.
- * isAbsoluteEnabled tracks qemu_input_is_absolute() [ie "is the emulated
- *   pointing device an absolute-position one?"], but is only updated on
- *   next refresh.
- * isMouseGrabbed tracks whether GUI events are directed to the guest;
- *   it controls whether special keys like Cmd get sent to the guest,
- *   and whether we capture the mouse when in non-absolute mode.
- */
-- (BOOL) isMouseGrabbed;
-- (BOOL) isAbsoluteEnabled;
-@end
 
 QemuCocoaView *cocoaView;
 
@@ -1079,34 +1098,6 @@ QemuCocoaView *cocoaView;
 @end
 
 
-
-/*
- ------------------------------------------------------
-    QemuCocoaAppController
- ------------------------------------------------------
-*/
-@interface QemuCocoaAppController : NSObject
-                                       <NSWindowDelegate, NSApplicationDelegate>
-{
-}
-- (void)doToggleFullScreen:(id)sender;
-- (void)showQEMUDoc:(id)sender;
-- (void)zoomToFit:(id) sender;
-- (void)displayConsole:(id)sender;
-- (void)pauseQEMU:(id)sender;
-- (void)resumeQEMU:(id)sender;
-- (void)displayPause;
-- (void)removePause;
-- (void)restartQEMU:(id)sender;
-- (void)powerDownQEMU:(id)sender;
-- (void)ejectDeviceMedia:(id)sender;
-- (void)changeDeviceMedia:(id)sender;
-- (BOOL)verifyQuit;
-- (void)openDocumentation:(NSString *)filename;
-- (IBAction) do_about_menu_item: (id) sender;
-- (void)make_about_window;
-- (void)adjustSpeed:(id)sender;
-@end
 
 @implementation QemuCocoaAppController
 - (id) init
