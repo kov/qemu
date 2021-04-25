@@ -51,6 +51,7 @@ typedef struct {
     int mouse_on;
     CGImageRef cursor_cgimage;
     int cursor_show;
+    bool full_grab;
     bool inited;
 } QEMUScreen;
 
@@ -64,6 +65,7 @@ typedef struct {
     QKbdState *kbd;
     BOOL isMouseGrabbed;
     BOOL isAbsoluteEnabled;
+    CFMachPortRef eventsTap;
 }
 - (id)initWithFrame:(NSRect)frameRect
              screen:(QEMUScreen *)given_screen;

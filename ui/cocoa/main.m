@@ -680,6 +680,7 @@ static void cocoa_display_init(DisplayState *ds, DisplayOptions *opts)
     COCOA_DEBUG("qemu_cocoa: cocoa_display_init\n");
 
     screen.cursor_show = opts->has_show_cursor && opts->show_cursor;
+    screen.full_grab = opts->u.cocoa.full_grab;
 
     /* Tell main thread to go ahead and create the app and enter the run loop */
     qemu_sem_post(&display_init_sem);
