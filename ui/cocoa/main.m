@@ -682,6 +682,12 @@ static void cocoa_display_init(DisplayState *ds, DisplayOptions *opts)
     screen.cursor_show = opts->has_show_cursor && opts->show_cursor;
     screen.full_grab = opts->u.cocoa.full_grab;
 
+    if (opts->u.cocoa.has_swap_option_command) {
+        screen.swap_option_command = opts->u.cocoa.swap_option_command;
+    } else {
+        screen.swap_option_command = true;
+    }
+
     /* Tell main thread to go ahead and create the app and enter the run loop */
     qemu_sem_post(&display_init_sem);
     qemu_sem_wait(&app_started_sem);
