@@ -52,6 +52,7 @@ typedef struct {
     CGImageRef cursor_cgimage;
     int cursor_show;
     bool full_grab;
+    bool swap_option_command;
     bool inited;
 } QEMUScreen;
 
@@ -90,6 +91,7 @@ typedef struct {
 - (BOOL) isMouseGrabbed;
 - (BOOL) isAbsoluteEnabled;
 - (BOOL) isFullGrabEnabled;
+- (BOOL) isSwapOptionCommandEnabled;
 - (void) setNeedsDisplayForCursorX:(int)x
                                  y:(int)y
                              width:(int)width
